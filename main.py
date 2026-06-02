@@ -7,7 +7,7 @@ conn.execute("DROP TABLE IF EXISTS Destinations")
 
 conn.execute("""
 CREATE TABLE Pilots (
-    EmployeeID INTEGER PRIMARY KEY,
+    Employee_ID INTEGER PRIMARY KEY,
     FirstName TEXT NOT NULL,
     LastName TEXT NOT NULL,
     LicenceNumber TEXT UNIQUE NOT NULL,
@@ -27,21 +27,21 @@ CREATE TABLE Destinations (
 
 conn.execute("""
 CREATE TABLE Flights (
-    FlightNo INTEGER PRIMARY KEY,
-    Time TEXT NOT NULL,
-    Date DATE NOT NULL,
+Flight_No INTEGER PRIMARY KEY,
+Time TEXT NOT NULL,
+Date DATE NOT NULL,
 
-    PilotID INTEGER,
-    CityCode TEXT NOT NULL,
-    Airport TEXT NOT NULL,
+Pilot_ID INTEGER,
+CityCode TEXT NOT NULL,
+Airport TEXT NOT NULL,
 
-    FOREIGN KEY (PilotID)
-        REFERENCES Pilots(EmployeeID)
-        ON DELETE SET NULL
-        ON UPDATE CASCADE,
+FOREIGN KEY (Pilot_ID)
+REFERENCES Pilots(Employee_ID)
+ON DELETE SET NULL
+ON UPDATE CASCADE,
 
-    FOREIGN KEY (CityCode, Airport)
-        REFERENCES Destinations(CityCode, Airport)
+FOREIGN KEY (CityCode, Airport)
+REFERENCES Destinations(CityCode, Airport)
 )
 """)
 
@@ -92,7 +92,7 @@ conn.execute("""INSERT INTO Flights VALUES
 (1006, '07:20', '2026-05-23', 6, 'MAD', 'MAD'),
 (1007, '13:50', '2026-05-23', 7, 'AMS', 'AMS'),
 (1008, '22:10', '2026-05-24', 8, 'DXB', 'DXB'),
-(1009, '11:40', '2026-05-24', 9, 'TYO', 'HND'),
+(1009, '11:40', '2026-05-24', 2, 'TYO', 'HND'),
 (1010, '16:30', '2026-05-25', 10, 'SYD', 'SYD'),
 (1011, '05:55', '2026-05-25', 11, 'IST', 'IST'),
 (1012, '14:25', '2026-05-26', 12, 'CHI', 'ORD'),
@@ -103,5 +103,170 @@ conn.execute("""INSERT INTO Flights VALUES
 conn.commit()
 
 cursor = conn.execute("SELECT * FROM Pilots")
+for row in cursor.fetchall():
+    print(row)
+
+#Select flight information based on different criteria#
+print("\nFlights departing from New York:")
+cursor = conn.execute("""SELECT f.Flight_No, f.Time, f.Date, p.FirstName || ' ' || p.LastName AS PilotName, d.City, d.Airport
+                         FROM Flights f
+                         JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         WHERE d.City = 'New York'""")
+for row in cursor.fetchall():
+    print(row)
+
+
+print("\nFlights piloted by Michael Clark:")
+cursor = conn.execute("""SELECT f.Flight_No, f.Time, f.Date, p.FirstName || ' ' || p.LastName AS PilotName, d.City, d.Airport
+                         FROM Flights f
+                         JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         WHERE p.FirstName = 'Michael' AND p.LastName = 'Clark'""")
+for row in cursor.fetchall():
+    print(row)
+
+
+print("\nFlights departing from 2026-05-20 to 2026-05-27:")
+cursor = conn.execute("""SELECT f.Flight_No, f.Time, f.Date, d.City, d.Airport
+                         FROM Flights f
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         WHERE f.Date BETWEEN '2026-05-20' AND '2026-05-27'""")
+for row in cursor.fetchall():
+    print(row)
+
+
+#Schedule modification#
+print("\nChanging departure time for flight 1003:")
+cursor =conn.execute("UPDATE Flights SET Time = '16:00' WHERE Flight_No = 1003")
+conn.commit()
+cursor = conn.execute("SELECT * FROM Flights WHERE Flight_No = 1003")
+for row in cursor.fetchall():
+    print(row)
+
+
+print("\nChanging destination for flight 1005:")
+cursor = conn.execute("SELECT * FROM Flights WHERE Flight_No = 1005")
+for row in cursor.fetchall():
+    print(row)
+cursor = conn.execute("UPDATE Flights SET CityCode = 'LON', Airport = 'LHR' WHERE Flight_No = 1005")
+conn.commit()
+cursor = conn.execute("SELECT * FROM Flights WHERE Flight_No = 1005")
+for row in cursor.fetchall():
+    print(row)
+
+
+#Pilot assignment#
+print("\nAssigning pilot Sarah Wilson to flight 1005:")
+cursor = conn.execute("""SELECT * FROM Flights  JOIN Pilots p ON Flights.Pilot_ID = p.Employee_ID
+                       WHERE Flight_No = 1005""")
+for row in cursor.fetchall():
+    print(row)
+cursor = conn.execute("UPDATE Flights SET Pilot_ID = 6 WHERE Flight_No = 1005")
+conn.commit()
+cursor = conn.execute("""SELECT * FROM Flights JOIN Pilots p ON Flights.Pilot_ID = p.Employee_ID 
+                       WHERE Flight_No = 1005""")
+for row in cursor.fetchall():
+    print(row)
+
+
+print("\nAssign Mark Johnson to all flights going to London:")
+cursor = conn.execute("""SELECT f.Flight_No, f.Time, f.Date, p.FirstName || ' ' || p.LastName AS PilotName, d.City, d.Airport
+                         FROM Flights f
+                         JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         WHERE d.City = 'London'""")
+for row in cursor.fetchall():
+    print(row)
+
+cursor = conn.execute("""UPDATE Flights SET Pilot_ID = (SELECT Employee_ID FROM Pilots WHERE FirstName = 'Mark' AND LastName = 'Johnson')
+                         WHERE Flight_No IN (SELECT f.Flight_No
+                         FROM Flights f
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         WHERE d.City = 'London')""")
+conn.commit()
+cursor = conn.execute("""SELECT f.Flight_No, f.Time, f.Date, p.FirstName || ' ' || p.LastName AS PilotName, d.City, d.Airport
+                         FROM Flights f
+                         JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         WHERE d.City = 'London'""")
+for row in cursor.fetchall():
+    print(row)
+
+
+print("\nGet the schedule for pilot Anna Peterson:")
+cursor = conn.execute("""SELECT f.Flight_No, f.Time, f.Date, d.City, d.Airport
+                         FROM Flights f
+                         JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         WHERE p.FirstName = 'Anna' AND p.LastName = 'Peterson'""")
+for row in cursor.fetchall():
+    print(row)
+
+
+#Destination management#
+print("\nAdding new destination: Barcelona (BCN):")
+cursor = conn.execute("SELECT * FROM Destinations")
+for row in cursor.fetchall():
+    print(row)
+cursor = conn.execute("INSERT INTO Destinations VALUES ('BCN', 'BCN', 'Barcelona')")
+conn.commit()
+cursor = conn.execute("SELECT * FROM Destinations")
+for row in cursor.fetchall():
+    print(row)
+
+
+print("\nUpdating airport code for Tokyo:")
+cursor = conn.execute("SELECT * FROM Destinations WHERE City = 'Tokyo'")
+for row in cursor.fetchall():
+    print(row)
+cursor = conn.execute("UPDATE Destinations SET Airport = 'NRT' WHERE City = 'Tokyo'")
+conn.commit()
+cursor = conn.execute("SELECT * FROM Destinations WHERE City = 'Tokyo'")
+for row in cursor.fetchall():
+    print(row)
+
+print("\nUpdate destination for flight 1001:");
+cursor = conn.execute("""SELECT f.Flight_No, f.Time, f.Date, d.City, d.Airport
+                         FROM Flights f
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         WHERE f.Flight_No = 1001""")
+for row in cursor.fetchall():
+    print(row)
+cursor = conn.execute("UPDATE Flights SET CityCode = 'LAX', Airport = 'LAX' WHERE Flight_No = 1001")
+conn.commit()
+cursor = conn.execute("""SELECT f.Flight_No, f.Time, f.Date, d.City, d.Airport
+                         FROM Flights f
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         WHERE f.Flight_No = 1001""")
+for row in cursor.fetchall():
+    print(row)
+
+
+#Data summary#
+print("\nNumber of flights per destination:")
+cursor = conn.execute("""SELECT d.City, COUNT(*) AS FlightCount
+                         FROM Flights f
+                         JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+                         GROUP BY d.City""")
+for row in cursor.fetchall():
+    print(row)
+
+
+print("\nNumber of flights per pilot:")
+cursor = conn.execute("""SELECT p.FirstName || ' ' || p.LastName AS PilotName, COUNT(*) AS FlightCount
+                         FROM Flights f
+                         JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+                         GROUP BY p.Employee_ID""")
+for row in cursor.fetchall():
+    print(row)
+
+
+print("\nPilots with more than 2 flights scheduled:")
+cursor = conn.execute("""SELECT p.FirstName || ' ' || p.LastName AS PilotName, COUNT(*) AS FlightCount
+                         FROM Flights f
+                         JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+                         GROUP BY p.Employee_ID
+                         HAVING COUNT(*) > 2""")
 for row in cursor.fetchall():
     print(row)
