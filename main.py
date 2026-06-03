@@ -270,3 +270,216 @@ cursor = conn.execute("""SELECT p.FirstName || ' ' || p.LastName AS PilotName, C
                          HAVING COUNT(*) > 2""")
 for row in cursor.fetchall():
     print(row)
+
+
+
+
+#CLI FLIGHT MANAGEMENT#
+
+def add_flight():
+    flight_no = int(input("Flight Number: "))
+    city_code = input("City Code: ")
+    airport = input("Airport: ")
+    time = input("Time (HH:MM): ")
+    date = input("Date (YYYY-MM-DD): ")
+
+    conn.execute("""
+        INSERT INTO Flights
+        (Flight_No, CityCode, Airport, Time, Date)
+        VALUES (?, ?, ?, ?, ?)
+    """, (flight_no, city_code, airport, time, date))
+
+    conn.commit()
+
+    print("Flight added.")
+
+
+
+#View flight by destination#
+def view_flights_by_destination():
+    city = input("Enter city name: ")
+
+    cursor = conn.execute("""
+        SELECT f.Flight_No, f.Time, f.Date, p.FirstName || ' ' || p.LastName AS PilotName
+        FROM Flights f
+        JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+        JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+        WHERE d.City = ?
+    """, (city,))
+
+    for row in cursor.fetchall():
+        print(row)
+
+#View flight by date#
+def view_flights_by_date():
+    date = input("Enter date (YYYY-MM-DD): ")
+
+    cursor = conn.execute("""
+        SELECT f.Flight_No, f.Time, f.Date, p.FirstName || ' ' || p.LastName AS PilotName, d.City, d.Airport
+        FROM Flights f
+        JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+        JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+        WHERE f.Date = ?
+    """, (date,))
+
+    for row in cursor.fetchall():
+        print(row)
+
+#View flight by flight number#
+def view_flight_by_number():
+    flight_no = int(input("Enter flight number: "))
+
+    cursor = conn.execute("""
+        SELECT f.Flight_No, f.Time, f.Date, p.FirstName || ' ' || p.LastName AS PilotName, d.City, d.Airport
+        FROM Flights f
+        JOIN Pilots p ON f.Pilot_ID = p.Employee_ID
+        JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+        WHERE f.Flight_No = ?
+    """, (flight_no,))
+
+    for row in cursor.fetchall():
+        print(row)
+
+
+#Select flight criterion to view#
+def view_flights():
+    print("\n===== VIEW FLIGHTS =====")
+    print("1. By Destination")
+    print("2. By Date")
+    print("3. By Flight Number")
+
+    choice = input("Choice: ")
+
+    if choice == "1":
+        view_flights_by_destination()
+    elif choice == "2":
+        view_flights_by_date()
+    elif choice == "3":
+        view_flight_by_number()
+    else:
+        print("Invalid choice.")
+
+
+#Update flight information#
+def update_flight():
+    flight_no = int(input("Enter flight number to update: "))
+    new_time = input("Enter new time (HH:MM): ")
+    new_date = input("Enter new date (YYYY-MM-DD): ")
+
+    conn.execute("""
+        UPDATE Flights
+        SET Time = ?, Date = ?
+        WHERE Flight_No = ?
+    """, (new_time, new_date, flight_no))
+
+    conn.commit()
+
+    print("Flight information updated.")
+
+    
+#Assign pilot to flight#
+def assign_pilot():
+    flight_no = int(input("Flight Number: "))
+    pilot_id = int(input("Pilot ID: "))
+
+    conn.execute("""
+        UPDATE Flights
+        SET Pilot_ID = ?
+        WHERE Flight_No = ?
+    """, (pilot_id, flight_no))
+
+    conn.commit()
+
+    print("Pilot assigned.")
+
+
+#View pilot schedule#
+def view_pilot_schedule():
+    pilot_id = int(input("Enter pilot ID: "))
+
+    cursor = conn.execute("""
+        SELECT f.Flight_No, f.Time, f.Date, d.City, d.Airport
+        FROM Flights f
+        JOIN Destinations d ON f.CityCode = d.CityCode AND f.Airport = d.Airport
+        WHERE f.Pilot_ID = ?
+    """, (pilot_id,))
+
+    for row in cursor.fetchall():
+        print(row)
+
+#View/manage destination information#
+def manage_destinations():
+    print("\n===== MANAGE DESTINATIONS =====")
+    print("1. Add New Destination")
+    print("2. Update Existing Destination")
+    print("3. View Destination")
+
+    choice = input("Choice: ")
+
+    if choice == "1":
+        city_code = input("City Code: ")
+        airport = input("Airport: ")
+        city = input("City: ")
+
+        conn.execute("""
+            INSERT INTO Destinations
+            (CityCode, Airport, City)
+            VALUES (?, ?, ?)
+        """, (city_code, airport, city))
+
+        conn.commit()
+
+        print("Destination added.")
+    elif choice == "2":
+        city_code = input("Enter city code of destination to update: ")
+        new_airport = input("Enter new airport code: ")
+        new_city = input("Enter new city name: ")
+
+        conn.execute("""
+            UPDATE Destinations
+            SET Airport = ?, City = ?
+            WHERE CityCode = ?
+        """, (new_airport, new_city, city_code))
+
+        conn.commit()
+
+        print("Destination updated.")
+    elif choice == "3":
+        city_code = input("Enter city code of destination to view: ")
+        cursor = conn.execute("SELECT * FROM Destinations WHERE CityCode = ?", (city_code,))
+        for row in cursor.fetchall():
+            print(row)
+    else:
+        print("Invalid choice.")
+
+
+def main_menu():
+    while True:
+        print("\n===== FLIGHT MANAGEMENT SYSTEM =====")
+        print("1. Add New Flight")
+        print("2. View Flights by Criteria")
+        print("3. Update Flight Information")
+        print("4. Assign Pilot to Flight")
+        print("5. View Pilot Schedule")
+        print("6. View/Update Destination Information")
+        print("7. Exit")
+
+        choice = input("Select an option: ")
+
+        if choice == "1":
+            add_flight()
+        elif choice == "2":
+            view_flights()
+        elif choice == "3":
+            update_flight()
+        elif choice == "4":
+            assign_pilot()
+        elif choice == "5":
+            view_pilot_schedule()
+        elif choice == "6":
+            manage_destinations()
+        elif choice == "7":
+            break
+        else:
+            print("Invalid choice.")
+main_menu()
