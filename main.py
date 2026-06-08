@@ -407,7 +407,7 @@ def view_pilot_schedule():
     for row in cursor.fetchall():
         print(row)
 
-#View/manage destination information#
+#View/manage destination information - outputs 3 possible choices#
 def manage_destinations():
     print("\n===== MANAGE DESTINATIONS =====")
     print("1. Add New Destination")
@@ -452,7 +452,7 @@ def manage_destinations():
     else:
         print("Invalid choice.")
 
-
+#Prints all the menu options for the user#
 def main_menu():
     while True:
         print("\n===== FLIGHT MANAGEMENT SYSTEM =====")
@@ -481,5 +481,5 @@ def main_menu():
         elif choice == "7":
             break
         else:
-            print("Invalid choice.")
+            print("Invalid choice.") #Handles invalid menu choices#
 main_menu()
